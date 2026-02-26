@@ -13,6 +13,7 @@ import {
   fetchCatalogSnapshot,
   filterCatalogSnapshot,
 } from "../services/productService";
+import { getImageUrl as utilGetImageUrl } from "../utils/imageUtils";
 import { useCatalogState } from "../contexts/CatalogContext";
 
 const HARDCODED_FABRICANTES = [
@@ -220,7 +221,7 @@ function CatalogPage() {
 
   const getImageUrl = useCallback((codigo) => {
     if (!codigo) return null;
-    return `/vista/${encodeURIComponent(codigo)}.jpg`;
+    return utilGetImageUrl(codigo);
   }, []);
 
   const totalItems = useMemo(() => (pagination.total || 0).toLocaleString(), [pagination.total]);

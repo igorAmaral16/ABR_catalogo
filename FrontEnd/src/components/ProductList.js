@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/ProductList.css";
 import DescriptionModal from "./DescriptionModal";
+import { getThumbnailUrl } from "../utils/imageUtils";
 
 function ProductList({ items = [], loading = false, onConjuntoSelect, isConjuntosView = false }) {
   const navigate = useNavigate();
@@ -40,7 +41,7 @@ function ProductList({ items = [], loading = false, onConjuntoSelect, isConjunto
             <header className="pl-card-header">
               <div className="pl-thumb-wrapper" onClick={() => navigate(`/produtos/${encodeURIComponent(p.codigo)}`)}>
                 <img
-                  src={`/vista/${encodeURIComponent(p.codigo)}.jpg`}
+                  src={getThumbnailUrl(p.codigo)}
                   alt={p.descricao || p.codigo}
                   className="pl-thumb-img"
                   loading="lazy"

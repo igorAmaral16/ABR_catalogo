@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import "../styles/ConjuntoVisualizador.css";
+import { getThumbnailUrl } from "../utils/imageUtils";
 
 function ConjuntoVisualizador({ conjuntos, parentCode }) {
   const navigate = useNavigate();
@@ -38,7 +39,7 @@ function ConjuntoVisualizador({ conjuntos, parentCode }) {
             >
               <div className="produto-imagem-container">
                 <img
-                  src={`/vista/${encodeURIComponent(filho)}.jpg`}
+                  src={getThumbnailUrl(filho)}
                   alt={filho_des || filho}
                   loading="lazy"
                   className="produto-imagem"

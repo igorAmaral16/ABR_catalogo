@@ -1,6 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import ConjuntoGallery from "./ConjuntoGallery";
+import { getThumbnailUrl } from "../utils/imageUtils";
 import "../styles/ProductTable.css";
 
 function ProductTable({ products, onConjuntoSelect, loading = false, initialExpanded = null }) {
@@ -119,7 +120,7 @@ function ProductTable({ products, onConjuntoSelect, loading = false, initialExpa
 
                         <div className="thumb-wrapper">
                           <img
-                            src={`/vista/${encodeURIComponent(p.codigo)}.jpg`}
+                            src={getThumbnailUrl(p.codigo)}
                             alt={p.descricao || p.codigo}
                             className="thumb"
                             loading="lazy"

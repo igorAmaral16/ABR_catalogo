@@ -1,5 +1,6 @@
 import { useState } from "react";
 import "../styles/ConjuntoGallery.css";
+import { getThumbnailUrl } from "../utils/imageUtils";
 
 function ConjuntoGallery({ conjuntos = [], onPieceClick }) {
   const [imageErrors, setImageErrors] = useState({});
@@ -58,7 +59,7 @@ function ConjuntoGallery({ conjuntos = [], onPieceClick }) {
               <div className="conjunto-item-image">
                 {!hasError ? (
                   <img
-                    src={`/vista/${encodeURIComponent(codigo)}.jpg`}
+                    src={getThumbnailUrl(codigo)}
                     alt={`${codigo} - ${peca.filho_des}`}
                     onError={() => handleImageError(codigo)}
                     loading="lazy"

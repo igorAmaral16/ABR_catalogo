@@ -6,6 +6,7 @@ import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
 import EmptyState from "../components/EmptyState";
 import ConjuntoGallery from "../components/ConjuntoGallery";
+import { getImageUrl as utilGetImageUrl } from "../utils/imageUtils";
 import ImageLightbox from "../components/ImageLightbox";
 import Header from "../components/Header";
 import { useCatalogState } from "../contexts/CatalogContext";
@@ -355,7 +356,7 @@ function ProductDetailsPage() {
 
   const getImageUrl = useCallback(() => {
     if (!product?.codigo) return "";
-    return `/vista/${encodeURIComponent(product.codigo)}.jpg`;
+    return utilGetImageUrl(product.codigo);
   }, [product?.codigo]);
 
   const handlePrint = useCallback(() => {
