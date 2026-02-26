@@ -4079,3 +4079,16 @@ URL Atual: http://localhost:3000/?page=1&sortBy=grupo
 URL de Referência: Direto
 Localização Aproximada: -23.6847, -46.5076
 ===============================
+
+=== LEAD LOG ENTRY ===
+Data/Hora: 26/02/2026, 14:47:04
+IP do Cliente: localhost
+Idioma do Navegador: pt-BR
+Dispositivo: iPhone
+Sistema Operacional: iOS 18.5
+Navegador: Safari 18.5
+Plataforma (raw): Windows
+URL Atual: http://localhost:3000/?page=1&sortBy=grupo
+URL de Referência: Direto
+Localização Aproximada: N/A
+===============================
