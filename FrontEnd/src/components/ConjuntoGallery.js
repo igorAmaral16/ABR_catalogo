@@ -37,7 +37,7 @@ function ConjuntoGallery({ conjuntos = [], onPieceClick }) {
     <section className="conjunto-gallery">
       <div className="conjunto-header">
         <h2>Peças do Conjunto</h2>
-        <span className="conjunto-count">{conjuntos.length} peça(s)</span>
+        <span className="conjunto-count">{validPieces.reduce((s, it) => s + (Number(it.qtd_explosao) || 1), 0)} peça(s)</span>
       </div>
 
       <div className="conjunto-grid">
@@ -80,11 +80,9 @@ function ConjuntoGallery({ conjuntos = [], onPieceClick }) {
                   {peca.filho_des || "Sem descrição"}
                 </div>
 
-                {qtd > 1 && (
-                  <div className="conjunto-quantidade">
-                    <span className="qtd-badge">Qtd: {qtd}</span>
-                  </div>
-                )}
+                <div className="conjunto-quantidade">
+                  <span className="qtd-badge">Qtd: {qtd}</span>
+                </div>
               </div>
             </div>
           );

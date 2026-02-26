@@ -34,7 +34,8 @@ function ProductList({ items = [], loading = false, onConjuntoSelect, isConjunto
     <div className="pl-grid" role="list">
       {items.map((p) => {
         const key = p.codigo || p.id || Math.random();
-        const hasConj = p.conjuntos && p.conjuntos.length > 0;
+        const hasConj = p.conjuntos && Array.isArray(p.conjuntos) && p.conjuntos.length > 0;
+        const totalPieces = hasConj ? p.conjuntos.reduce((s, c) => s + (Number(c.qtd_explosao) || 1), 0) : 0;
 
         return (
           <article className="pl-card" key={key} role="listitem">
@@ -62,7 +63,7 @@ function ProductList({ items = [], loading = false, onConjuntoSelect, isConjunto
             <div className="pl-actions">
               {isConjuntosView ? (
                 <>
-                  <div className="pl-piece-count" aria-hidden>{(p.conjuntos && p.conjuntos.length) || 0} peças</div>
+                  <div className="pl-piece-count" aria-hidden>{totalPieces} peças</div>
                   <button
                     type="button"
                     className="pl-action btn-primary"
@@ -102,7 +103,7 @@ function ProductList({ items = [], loading = false, onConjuntoSelect, isConjunto
                         <rect x="3" y="7" width="18" height="10" rx="2" ry="2" fill="none" stroke="currentColor" strokeWidth="1.5" />
                         <path d="M3 7l9 5 9-5" fill="none" stroke="currentColor" strokeWidth="1.5" />
                       </svg>
-                      <span>Peças ({p.conjuntos.length})</span>
+                      <span>Peças ({totalPieces})</span>
                     </button>
                   ) : (
                     <div className="pl-spacer" />

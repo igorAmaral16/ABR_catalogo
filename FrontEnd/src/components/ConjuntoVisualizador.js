@@ -55,11 +55,9 @@ function ConjuntoVisualizador({ conjuntos, parentCode }) {
                 {childProduct?.grupo && (
                   <div className="produto-grupo">{childProduct.grupo}</div>
                 )}
-                {qtd_explosao && qtd_explosao > 1 && (
-                  <div className="produto-quantidade">
-                    Qtd: {qtd_explosao}
-                  </div>
-                )}
+                <div className="produto-quantidade">
+                  Qtd: {qtd_explosao ? qtd_explosao : 1}
+                </div>
               </div>
 
               <div className="produto-overlay">

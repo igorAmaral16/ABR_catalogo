@@ -96,7 +96,8 @@ function ProductTable({ products, onConjuntoSelect, loading = false, initialExpa
                 ? p.conjuntos.filter((c) => c && c.filho && String(c.filho).trim() !== "")
                 : [];
 
-              const hasConjuntos = validConjuntos.length > 0;
+              const totalConjuntoPieces = validConjuntos.reduce((s, c) => s + (Number(c.qtd_explosao) || 1), 0);
+              const hasConjuntos = totalConjuntoPieces > 0;
 
               const keyBase = p.codigo || `item-${index}`;
 
@@ -134,12 +135,12 @@ function ProductTable({ products, onConjuntoSelect, loading = false, initialExpa
                         </div>
 
                         {hasConjuntos && (
-                          <span className="conjunto-count-badge" title={`${validConjuntos.length} peça(s) neste conjunto`}>
+                          <span className="conjunto-count-badge" title={`${totalConjuntoPieces} peça(s) neste conjunto`}>
                             <svg className="icon-outline badge-svg" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false">
                               <rect x="3" y="7" width="18" height="10" rx="2" ry="2" fill="none" stroke="currentColor" strokeWidth="1.5" />
                               <path d="M3 7l9 5 9-5" fill="none" stroke="currentColor" strokeWidth="1.5" />
                             </svg>
-                            <span className="badge-number">{validConjuntos.length}</span>
+                            <span className="badge-number">{totalConjuntoPieces}</span>
                           </span>
                         )}
                       </div>
@@ -195,7 +196,7 @@ function ProductTable({ products, onConjuntoSelect, loading = false, initialExpa
                         <div className="conjunto-container">
                           <div className="conjunto-header">
                             <h3>Peças do Conjunto: <strong>{p.codigo}</strong></h3>
-                            <span className="piece-count">({validConjuntos.length} peça{validConjuntos.length !== 1 ? 's' : ''})</span>
+                            <span className="piece-count">({totalConjuntoPieces} peça{totalConjuntoPieces !== 1 ? 's' : ''})</span>
                           </div>
                           <ConjuntoGallery
                             conjuntos={validConjuntos}
