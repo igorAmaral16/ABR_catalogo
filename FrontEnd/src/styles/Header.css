@@ -41,6 +41,12 @@
     flex-shrink: 0;
 }
 
+.header-logo {
+    max-height: 48px;
+    width: auto;
+    display: block;
+}
+
 .header-back-btn:hover {
     background: var(--primary-light);
     border-color: var(--primary);

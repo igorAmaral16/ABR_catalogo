@@ -170,6 +170,13 @@ async function handleResponse(response) {
     return null;
   }
 
+  // If backend returned explicit error payload, treat it as failure
+  if (body && body.error) {
+    const msg = String(body.error);
+    const codePart = response.status ? ` (HTTP ${response.status})` : "";
+    throw new Error(msg + codePart);
+  }
+
   if (!response.ok) throw new Error(body.error || `Erro HTTP ${response.status}`);
   if (typeof body !== "object" || body === null) throw new Error("Resposta do servidor não é um objeto JSON válido");
   return body;

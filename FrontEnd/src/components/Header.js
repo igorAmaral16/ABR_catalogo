@@ -5,6 +5,7 @@ function Header({
   children,
   title = "Catálogo ABR",
   subtitle = "Peças automotivas",
+  showLogo = true,
   showBackButton = false,
   onBackClick = null,
   onLogoClick = null
@@ -39,8 +40,18 @@ function Header({
             </button>
           )}
           <div className="brand-content" onClick={handleLogoClick} style={{ cursor: 'pointer' }}>
-            <h1 className="header-title">{title}</h1>
-            {subtitle && <p className="header-subtitle">{subtitle}</p>}
+            {showLogo ? (
+              <img
+                src="/images/LOGO_ABR.PNG"
+                alt={title}
+                className="header-logo"
+              />
+            ) : (
+              <>
+                <h1 className="header-title">{title}</h1>
+                {subtitle && <p className="header-subtitle">{subtitle}</p>}
+              </>
+            )}
           </div>
         </div>
 

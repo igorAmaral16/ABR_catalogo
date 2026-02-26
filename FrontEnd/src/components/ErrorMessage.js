@@ -16,30 +16,40 @@ function ErrorMessage({
     return <FiAlertTriangle className="error-icon" />;
   };
 
+  const parseStatus = () => {
+    const match = error && error.match(/(\d{3})/);
+    return match ? parseInt(match[1], 10) : null;
+  };
+
   const getErrorTitle = () => {
     if (title) return title;
+    const status = parseStatus();
+    if (status) {
+      if (status >= 500) return "Erro do Servidor";
+      if (status === 404) return "Conteúdo Não Encontrado";
+      if (status === 401) return "Não Autorizado";
+      if (status === 403) return "Acesso Proibido";
+      if (status === 400) return "Requisição Inválida";
+    }
 
     if (error?.includes('rede') || error?.includes('conexão') || error?.includes('network')) {
       return "Problema de Conexão";
-    }
-    if (error?.includes('servidor') || error?.includes('500')) {
-      return "Erro do Servidor";
-    }
-    if (error?.includes('não encontrado') || error?.includes('404')) {
-      return "Página não Encontrada";
     }
     return "Ops! Algo deu errado";
   };
 
   const getErrorMessage = () => {
+    const status = parseStatus();
+    if (status) {
+      if (status >= 500) return "O servidor está temporariamente indisponível. Tente novamente em alguns minutos.";
+      if (status === 404) return "O conteúdo que você está procurando não foi encontrado.";
+      if (status === 401) return "Você não tem permissão para acessar este recurso.";
+      if (status === 403) return "Acesso negado a este recurso.";
+      if (status === 400) return "Dados inválidos enviados. Verifique e tente novamente.";
+    }
+
     if (error?.includes('rede') || error?.includes('conexão') || error?.includes('network')) {
       return "Verifique sua conexão com a internet e tente novamente.";
-    }
-    if (error?.includes('servidor') || error?.includes('500')) {
-      return "O servidor está temporariamente indisponível. Tente novamente em alguns minutos.";
-    }
-    if (error?.includes('não encontrado') || error?.includes('404')) {
-      return "O conteúdo que você está procurando não foi encontrado.";
     }
     return error || "Ocorreu um erro inesperado. Tente novamente.";
   };

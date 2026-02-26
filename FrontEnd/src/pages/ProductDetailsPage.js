@@ -210,9 +210,12 @@ function ProductDetailsPage() {
   useEffect(() => {
     loadData();
     return () => {
+      // cleanup timeout and reset cache so reopening same code triggers fetch
       if (loadingTimeoutRef.current) {
         clearTimeout(loadingTimeoutRef.current);
       }
+      lastLoadedCode.current = null;
+      dataRef.current = null;
     };
   }, [loadData]);
 
@@ -308,6 +311,12 @@ function ProductDetailsPage() {
 
   const handleBackClick = useCallback(() => {
     setIsNavigating(true);
+
+    // When leaving the page we want to clear the lastLoadedCode so that
+    // reopening the same product forces a reload. This fixes the issue where
+    // returning and clicking on the same item had no effect.
+    lastLoadedCode.current = null;
+    dataRef.current = null;
 
     // Tenta voltar usando o sistema de navegação
     const success = goBackToPreviousProduct("/");
@@ -459,8 +468,8 @@ function ProductDetailsPage() {
       <NavigationProgress isActive={isNavigating} />
 
       <Header
+        showLogo={true}
         title="Detalhes do Produto"
-        subtitle={product ? product.descricao : "Carregando..."}
         showBackButton={true}
         onBackClick={handleBackClick}
         onLogoClick={clearHistory}
