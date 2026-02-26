@@ -1,16 +1,19 @@
 // Utility functions to build image URLs for the catalog.
-// Images are stored on Cloudinary and the base folder is kept in an
-// environment variable so the actual host is not checked into source
-// control.
-//
-// We provide a safe fallback to the original `/vista/` path so the UI
-// continues to work even if the env var is missing or mis‑configured.
+// Images are now hosted in a Cloudinary folder supplied via environment
+// variable. The value **must** be provided; without it the helper will
+// emit an empty string and log a warning so missing configuration is
+// obvious during development or in production.
 
 const RAW_PREFIX = process.env.REACT_APP_CLOUDINARY_FOLDER;
-// ensure we always end with a trailing slash when using the env var
+if (!RAW_PREFIX || !RAW_PREFIX.trim()) {
+  console.warn(
+    "REACT_APP_CLOUDINARY_FOLDER is not defined - image URLs will be empty"
+  );
+}
+// always normalise to a string ending with a slash (or empty string)
 const PREFIX = RAW_PREFIX && RAW_PREFIX.trim()
   ? RAW_PREFIX.trim().replace(/\/?$/, "/")
-  : "/vista/";
+  : "";
 
 function buildUrl(codigo) {
   if (!codigo) return "";
