@@ -6,14 +6,14 @@
 
 const RAW_PREFIX = process.env.REACT_APP_CLOUDINARY_FOLDER;
 if (!RAW_PREFIX || !RAW_PREFIX.trim()) {
-  console.warn(
-    "REACT_APP_CLOUDINARY_FOLDER is not defined - image URLs will be empty"
+  // throw during build so deployment fails if env var is missing.
+  throw new Error(
+    "REACT_APP_CLOUDINARY_FOLDER must be defined in the environment; " +
+    "check your .env or the hosting platform settings."
   );
 }
-// always normalise to a string ending with a slash (or empty string)
-const PREFIX = RAW_PREFIX && RAW_PREFIX.trim()
-  ? RAW_PREFIX.trim().replace(/\/?$/, "/")
-  : "";
+// normalise the configured value; it always ends with a slash
+const PREFIX = RAW_PREFIX.trim().replace(/\/?$/, "/");
 
 function buildUrl(codigo) {
   if (!codigo) return "";
