@@ -115,7 +115,7 @@ function ProductList({ items = [], loading = false, onConjuntoSelect, isConjunto
           </article>
         );
       })}
-        <DescriptionModal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={modalData.title} description={modalData.description} />
+      <DescriptionModal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={modalData.title} description={modalData.description} />
     </div>
   );
 }

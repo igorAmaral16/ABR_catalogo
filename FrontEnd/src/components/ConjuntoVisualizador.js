@@ -19,11 +19,11 @@ function ConjuntoVisualizador({ conjuntos, parentCode }) {
   return (
     <section className="conjunto-visualizador">
       <h3 className="conjunto-titulo">Peças do Conjunto: {parentCode}</h3>
-      
+
       <div className="conjunto-grid">
         {validItems.map((item, idx) => {
           const { filho, filho_des, qtd_explosao, childProduct } = item;
-          
+
           return (
             <div
               key={(filho ? `${filho}` : `item-${idx}`)}
@@ -33,7 +33,7 @@ function ConjuntoVisualizador({ conjuntos, parentCode }) {
               tabIndex="0"
               onKeyPress={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
-                    filho && handleProductClick(filho);
+                  filho && handleProductClick(filho);
                 }
               }}
             >

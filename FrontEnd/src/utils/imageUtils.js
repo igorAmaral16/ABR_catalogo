@@ -6,18 +6,18 @@
 
 const RAW_PREFIX = process.env.REACT_APP_CLOUDINARY_FOLDER;
 if (!RAW_PREFIX || !RAW_PREFIX.trim()) {
-  // throw during build so deployment fails if env var is missing.
-  throw new Error(
-    "REACT_APP_CLOUDINARY_FOLDER must be defined in the environment; " +
-    "check your .env or the hosting platform settings."
-  );
+    // throw during build so deployment fails if env var is missing.
+    throw new Error(
+        "REACT_APP_CLOUDINARY_FOLDER must be defined in the environment; " +
+        "check your .env or the hosting platform settings."
+    );
 }
 // normalise the configured value; it always ends with a slash
 const PREFIX = RAW_PREFIX.trim().replace(/\/?$/, "/");
 
 function buildUrl(codigo) {
-  if (!codigo) return "";
-  return `${PREFIX}${encodeURIComponent(codigo)}.jpg`;
+    if (!codigo) return "";
+    return `${PREFIX}${encodeURIComponent(codigo)}.jpg`;
 }
 
 /**
@@ -26,7 +26,7 @@ function buildUrl(codigo) {
  * @returns {string}
  */
 export function getImageUrl(codigo) {
-  return buildUrl(codigo);
+    return buildUrl(codigo);
 }
 
 /**
@@ -34,12 +34,12 @@ export function getImageUrl(codigo) {
  * thumbnail is requested.
  */
 export function getThumbnailUrl(codigo) {
-  return buildUrl(codigo);
+    return buildUrl(codigo);
 }
 
 /**
  * Alias for getImageUrl – used when rendering the larger detail image.
  */
 export function getDetailUrl(codigo) {
-  return buildUrl(codigo);
+    return buildUrl(codigo);
 }
