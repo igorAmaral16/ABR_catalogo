@@ -54,7 +54,6 @@ function ProductDetailsPage() {
   }, [data]);
 
   const loadData = useCallback(async () => {
-    console.log("🔍 ProductDetailsPage: loadData called for code:", code);
 
     // Limpa timeout anterior
     if (loadingTimeoutRef.current) {
@@ -172,7 +171,6 @@ function ProductDetailsPage() {
               }))
             : []);
 
-          console.log("🔍 ProductDetailsPage: setData called with snapshot data");
           setData({ data: { product, conjuntos, aplicacoes, benchmarks, memberships } });
           usedSnapshot = true;
           lastLoadedCode.current = code;
@@ -181,12 +179,9 @@ function ProductDetailsPage() {
 
       // Se NÃO encontrou no snapshot, tenta API
       if (!usedSnapshot) {
-        console.log("🔍 ProductDetailsPage: Trying API since no snapshot data found");
         try {
           const result = await fetchProductDetails(code);
-          console.log("🔍 ProductDetailsPage: API result:", result);
           if (result && typeof result === "object") {
-            console.log("🔍 ProductDetailsPage: setData called with API data:", result);
             setData(result);
             lastLoadedCode.current = code;
           }
@@ -195,7 +190,7 @@ function ProductDetailsPage() {
           throw new Error(`Produto não encontrado: ${code}`);
         }
       } else {
-        console.log("🔍 ProductDetailsPage: Skipping API call since snapshot data was found");
+        console.log(" ProductDetailsPage: Skipping API call since snapshot data was found");
       }
     } catch (err) {
       const errorMsg = err?.message || "Erro desconhecido ao carregar detalhes";
@@ -266,7 +261,6 @@ function ProductDetailsPage() {
   // Funções auxiliares para extrair dados
   const getProduct = (data) => {
     const result = data?.data?.product || data?.product;
-    console.log("🔍 getProduct called with data:", data, "result:", result);
     return result;
   };
   const getConjuntos = (data) => {
@@ -302,8 +296,6 @@ function ProductDetailsPage() {
   const memberships = getMemberships(data);
   const benchmarks = getBenchmarks(data);
   const aplicacoes = getAplicacoes(data);
-
-  console.log("🔍 ProductDetailsPage render - has product:", !!product, "loading:", loading, "error:", !!error);
 
   // Enriquece memberships com nomes
   const enrichedMemberships = memberships.map((membership) => {
