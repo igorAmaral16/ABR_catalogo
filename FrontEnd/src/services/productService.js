@@ -280,6 +280,7 @@ export function filterCatalogSnapshot(snapshot, filters = {}, page = 1, limit = 
   const productsArr = Array.isArray(snapshot.products) ? snapshot.products : [];
   const conjuntosArr = Array.isArray(snapshot.conjuntos) ? snapshot.conjuntos : [];
   const aplicacoesArr = Array.isArray(snapshot.aplicacoes) ? snapshot.aplicacoes : [];
+  const benchmarksArr = Array.isArray(snapshot.benchmarks) ? snapshot.benchmarks : [];
 
   const conjuntoChildrenMap = new Map();
   for (const row of conjuntosArr) {
@@ -296,6 +297,15 @@ export function filterCatalogSnapshot(snapshot, filters = {}, page = 1, limit = 
     if (!cc) continue;
     if (!appByConjunto.has(cc)) appByConjunto.set(cc, []);
     appByConjunto.get(cc).push(a);
+  }
+
+  // Mapa de benchmarks por código do produto
+  const benchmarkByCode = new Map();
+  for (const b of benchmarksArr) {
+    const codigo = (b.codigo || "").toString().trim();
+    if (!codigo) continue;
+    if (!benchmarkByCode.has(codigo)) benchmarkByCode.set(codigo, []);
+    benchmarkByCode.get(codigo).push(b);
   }
 
   // Itens (conjuntos + produtos)
@@ -371,6 +381,46 @@ export function filterCatalogSnapshot(snapshot, filters = {}, page = 1, limit = 
     }
   }
 
+  // Precompute codes that match search in benchmarks and aplicacoes
+  let codesMatchingSearchAux = null;
+  if (search) {
+    codesMatchingSearchAux = new Set();
+
+    // Procura em benchmarks
+    for (const [codigo, benchmarks] of benchmarkByCode.entries()) {
+      const matchesBench = benchmarks.some((b) => {
+        const numOrig = normalizeString(b.numero_original || "");
+        const origem = normalizeString(b.origem || "");
+        const tipo = normalizeString(b.tipo || "");
+        return numOrig.includes(search) || origem.includes(search) || tipo.includes(search);
+      });
+      if (matchesBench) codesMatchingSearchAux.add(codigo);
+    }
+
+    // Procura em aplicacoes
+    for (const [codigo_conjunto, apps] of appByConjunto.entries()) {
+      const matchesApp = apps.some((a) => {
+        const veiculo = normalizeString(a.veiculo || a.veiculo_nome || "");
+        const fabricante = normalizeString(a.fabricante || a.marca || "");
+        const modelo = normalizeString(a.modelo || a.model || "");
+        const ano = normalizeString(a.ano || a.year || "");
+        const tipo = normalizeString(a.tipo || "");
+        return (
+          veiculo.includes(search) ||
+          fabricante.includes(search) ||
+          modelo.includes(search) ||
+          ano.includes(search) ||
+          tipo.includes(search)
+        );
+      });
+      if (matchesApp) {
+        codesMatchingSearchAux.add(codigo_conjunto);
+        const filhos = conjuntoChildrenMap.get(codigo_conjunto) || [];
+        filhos.forEach((f) => codesMatchingSearchAux.add(f));
+      }
+    }
+  }
+
   const filtered = items.filter((it) => {
     if (isConjunto && it.tipo !== isConjunto) return false;
 
@@ -387,7 +437,12 @@ export function filterCatalogSnapshot(snapshot, filters = {}, page = 1, limit = 
     if (search) {
       const c = normalizeString(it.codigo || "");
       const d = normalizeString(it.descricao || "");
-      if (!c.includes(search) && !d.includes(search)) return false;
+      const matchesMainFields = c.includes(search) || d.includes(search);
+
+      // Se não encontrou nos campos principais, procura nos benchmarks/aplicacoes
+      const matchesAuxiliary = codesMatchingSearchAux && codesMatchingSearchAux.has(it.codigo);
+
+      if (!matchesMainFields && !matchesAuxiliary) return false;
     }
 
     return true;
