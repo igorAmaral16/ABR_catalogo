@@ -597,7 +597,7 @@ function CatalogPage() {
                 <div className="search-wrapper">
                   <input
                     type="text"
-                    placeholder="Buscar por Código ou descrição..."
+                    placeholder="Buscar por código, descrição, benchmark, aplicação..."
                     value={catalogState.currentFilters.search || ""}
                     onChange={(e) => handleFilterChange("search", e.target.value)}
                     className="search-input"
