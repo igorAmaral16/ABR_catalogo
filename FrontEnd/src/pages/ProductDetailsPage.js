@@ -224,42 +224,42 @@ function ProductDetailsPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [code]);
 
-  // Define aba inicial
+  // Define aba inicial ao carregar/atualizar os dados do produto
   useEffect(() => {
-    if (data) {
-      const context = searchParams.get("context");
+    if (!data) return;
 
-      if (context === "from-conjunto") {
-        const memberships = getMemberships(data);
-        if (memberships.length > 0) {
-          setActiveTab("memberships");
-          setSearchParams(new URLSearchParams(), { replace: true });
-          return;
-        }
-      } else if (context === "from-piece") {
-        const conjuntos = getConjuntos(data);
-        if (conjuntos.length > 0) {
-          setActiveTab("conjuntos");
-          setSearchParams(new URLSearchParams(), { replace: true });
-          return;
-        }
-      }
+    const context = searchParams.get("context");
 
-      // Lógica padrão de prioridade
-      const conjuntos = getConjuntos(data);
+    if (context === "from-conjunto") {
       const memberships = getMemberships(data);
-
+      if (memberships.length > 0) {
+        setActiveTab("memberships");
+        setSearchParams(new URLSearchParams(), { replace: true });
+        return;
+      }
+    } else if (context === "from-piece") {
+      const conjuntos = getConjuntos(data);
       if (conjuntos.length > 0) {
         setActiveTab("conjuntos");
-      } else if (memberships.length > 0) {
-        setActiveTab("memberships");
-      } else if (getBenchmarks(data).length > 0) {
-        setActiveTab("benchmarks");
-      } else if (getAplicacoes(data).length > 0) {
-        setActiveTab("aplicacoes");
+        setSearchParams(new URLSearchParams(), { replace: true });
+        return;
       }
     }
-  }, [data, searchParams, setSearchParams]);
+
+    // Lógica padrão de prioridade
+    const conjuntos = getConjuntos(data);
+    const memberships = getMemberships(data);
+
+    if (conjuntos.length > 0) {
+      setActiveTab("conjuntos");
+    } else if (memberships.length > 0) {
+      setActiveTab("memberships");
+    } else if (getBenchmarks(data).length > 0) {
+      setActiveTab("benchmarks");
+    } else if (getAplicacoes(data).length > 0) {
+      setActiveTab("aplicacoes");
+    }
+  }, [data]);
 
   // Funções auxiliares para extrair dados
   const getProduct = (data) => {
