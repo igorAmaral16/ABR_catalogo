@@ -226,7 +226,7 @@ function ProductDetailsPage() {
   }, [code]);
 
   // Define aba inicial ao carregar/atualizar os dados do produto
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  /* eslint-disable react-hooks/exhaustive-deps */
   // searchParams/setSearchParams intentionally omitted – including them causes infinite loops
   useEffect(() => {
     if (!data) return;
@@ -267,6 +267,7 @@ function ProductDetailsPage() {
       setActiveTab("aplicacoes");
     }
   }, [data, code]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   // Funções auxiliares para extrair dados
   const getProduct = (data) => {
