@@ -48,6 +48,7 @@ function ProductDetailsPage() {
   // refs para evitar dependências instáveis no loadData
   const dataRef = useRef(null);
   const loadingRef = useRef(false);
+  const isFirstLoadRef = useRef(true);
 
   useEffect(() => {
     dataRef.current = data;
@@ -208,6 +209,8 @@ function ProductDetailsPage() {
   }, [code, notify, preloadState]);
 
   useEffect(() => {
+    // Reset flag quando o código do produto muda
+    isFirstLoadRef.current = true;
     loadData();
     return () => {
       // cleanup timeout and reset cache so reopening same code triggers fetch
@@ -216,6 +219,7 @@ function ProductDetailsPage() {
       }
       lastLoadedCode.current = null;
       dataRef.current = null;
+      isFirstLoadRef.current = true; // Reset flag quando saindo da página
     };
   }, [loadData]);
 
@@ -227,6 +231,10 @@ function ProductDetailsPage() {
   // Define aba inicial ao carregar/atualizar os dados do produto
   useEffect(() => {
     if (!data) return;
+
+    // Só roda na primeira vez que data é carregado
+    if (!isFirstLoadRef.current) return;
+    isFirstLoadRef.current = false;
 
     const context = searchParams.get("context");
 
@@ -246,7 +254,7 @@ function ProductDetailsPage() {
       }
     }
 
-    // Lógica padrão de prioridade
+    // Lógica padrão de prioridade (apenas na primeira carga)
     const conjuntos = getConjuntos(data);
     const memberships = getMemberships(data);
 
