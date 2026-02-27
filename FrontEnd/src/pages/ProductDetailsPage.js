@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useNotification } from "../hooks/useNotification";
 import { useProductNavigation } from "../hooks/useProductNavigation";
@@ -22,10 +22,8 @@ function ProductDetailsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const notify = useNotification();
 
-  // removido catalogState (não utilizado)
   const { preloadState, getFromProductsCache } = useCatalogState();
 
-  // removidos canGoBackTo, goBack, cameFromProduct (não utilizados)
   const {
     navigateToProduct,
     navigateToConjuntoPiece,
@@ -45,226 +43,36 @@ function ProductDetailsPage() {
   const lastLoadedCode = useRef(null);
   const loadingTimeoutRef = useRef(null);
 
+  // Quando o usuário clica numa aba, NÃO queremos que o loadData sobrescreva o activeTab
+  // (isso era o que fazia o botão "marcar" mas o conteúdo voltar para a aba inicial).
+  const userSelectedTabRef = useRef(false);
+
   // refs para evitar dependências instáveis no loadData
   const dataRef = useRef(null);
   const loadingRef = useRef(false);
 
-  useEffect(() => {
-    dataRef.current = data;
-  }, [data]);
+  // escolhe a aba inicial com base nos dados disponíveis e contexto opcional
+  const determineInitialTab = (
+    conjuntosArr,
+    membershipsArr,
+    benchmarksArr,
+    aplicacoesArr,
+    context
+  ) => {
+    const conj = Array.isArray(conjuntosArr) ? conjuntosArr : [];
+    const mem = Array.isArray(membershipsArr) ? membershipsArr : [];
+    const bench = Array.isArray(benchmarksArr) ? benchmarksArr : [];
+    const aplic = Array.isArray(aplicacoesArr) ? aplicacoesArr : [];
 
-  const loadData = useCallback(async () => {
+    if (context === "from-conjunto" && mem.length > 0) return "memberships";
+    if (context === "from-piece" && conj.length > 0) return "conjuntos";
 
-    // Limpa timeout anterior
-    if (loadingTimeoutRef.current) {
-      clearTimeout(loadingTimeoutRef.current);
-    }
-
-    try {
-      loadingRef.current = true;
-      setLoading(true);
-      setError("");
-
-      if (!code || typeof code !== "string" || code.trim().length === 0) {
-        throw new Error("Código do produto inválido");
-      }
-
-      // Evita recarregar o mesmo produto
-      if (lastLoadedCode.current === code && dataRef.current) {
-        loadingRef.current = false;
-        setLoading(false);
-        return;
-      }
-
-      // Timeout de fallback para loading
-      loadingTimeoutRef.current = setTimeout(() => {
-        if (loadingRef.current) {
-          console.warn(`Timeout no carregamento do produto ${code}`);
-          loadingRef.current = false;
-          setLoading(false);
-          notify.warning("Carregamento está demorando mais que o esperado...");
-        }
-      }, 5000);
-
-      // Primeiro, tenta obter do cache
-      let usedSnapshot = false;
-
-      // Se temos snapshot pré-carregado, extrai dados completos (conjuntos, aplicacoes, etc)
-      if (preloadState && preloadState.loaded && preloadState.snapshot) {
-        const snap = preloadState.snapshot;
-        const normalizedCode = String(code || "").toUpperCase().replace(/\s+/g, "").trim();
-
-        // Procura o produto no snapshot (usar sempre, mesmo se cache tem)
-        let product = (Array.isArray(snap.products) ? snap.products : []).find(
-          (p) =>
-            String(p.codigo || p.code || p.id || "")
-              .toUpperCase()
-              .replace(/\s+/g, "")
-              .trim() === normalizedCode
-        );
-
-        // Se não encontrou como produto, pode ser um conjunto pai
-        if (!product) {
-          const conjuntoRelations = (Array.isArray(snap.conjuntos) ? snap.conjuntos : []).filter(
-            (c) =>
-              String(c.pai || c.codigo_conjunto || "")
-                .toUpperCase()
-                .replace(/\s+/g, "") === normalizedCode
-          );
-          if (conjuntoRelations.length > 0) {
-            product = (Array.isArray(snap.products) ? snap.products : []).find(
-              (p) =>
-                String(p.codigo || p.code || p.id || "")
-                  .toUpperCase()
-                  .replace(/\s+/g, "")
-                  .trim() === normalizedCode
-            );
-          }
-        }
-
-        // Se encontrou no snapshot, extrai TODOS os dados relacionados
-        if (product) {
-          const conjuntos = (Array.isArray(snap.conjuntos)
-            ? snap.conjuntos
-              .filter(
-                (c) =>
-                  String(c.pai || c.codigo_conjunto || "")
-                    .toUpperCase()
-                    .replace(/\s+/g, "") === normalizedCode
-              )
-              .map((c) => ({
-                filho: c.filho || c.codigo || c.codigo_componente || "",
-                filho_des: c.filho_des || c.descricao || c.des || null,
-                qtd_explosao: c.qtd_explosao || c.quantidade || c.qtd || 1,
-              }))
-            : []);
-
-          const aplicacoes = (Array.isArray(snap.aplicacoes)
-            ? snap.aplicacoes.filter(
-              (a) =>
-                String(a.codigo_conjunto || "")
-                  .toUpperCase()
-                  .replace(/\s+/g, "") === normalizedCode
-            )
-            : []);
-
-          const benchmarks = (Array.isArray(snap.benchmarks)
-            ? snap.benchmarks.filter(
-              (b) =>
-                String(b.codigo || "")
-                  .toUpperCase()
-                  .replace(/\s+/g, "") === normalizedCode
-            )
-            : []);
-
-          const memberships = (Array.isArray(snap.conjuntos)
-            ? snap.conjuntos
-              .filter(
-                (c) =>
-                  String(c.filho || "")
-                    .toUpperCase()
-                    .replace(/\s+/g, "") === normalizedCode
-              )
-              .map((c) => ({
-                codigo_conjunto: c.pai || c.codigo_conjunto || "",
-                quantidade: c.qtd_explosao || c.quantidade || c.qtd || 1,
-              }))
-            : []);
-
-          setData({ data: { product, conjuntos, aplicacoes, benchmarks, memberships } });
-          usedSnapshot = true;
-          lastLoadedCode.current = code;
-        }
-      }
-
-      // Se NÃO encontrou no snapshot, tenta API
-      if (!usedSnapshot) {
-        try {
-          const result = await fetchProductDetails(code);
-          if (result && typeof result === "object") {
-            setData(result);
-            lastLoadedCode.current = code;
-          }
-        } catch (apiErr) {
-          console.error("ProductDetailsPage: API failed:", apiErr);
-          throw new Error(`Produto não encontrado: ${code}`);
-        }
-      } else {
-        console.log(" ProductDetailsPage: Skipping API call since snapshot data was found");
-      }
-    } catch (err) {
-      const errorMsg = err?.message || "Erro desconhecido ao carregar detalhes";
-      console.error("Erro ao carregar detalhes:", errorMsg);
-      notify.error(errorMsg);
-      setError(errorMsg);
-      setData(null);
-    } finally {
-      loadingRef.current = false;
-      setLoading(false);
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-      }
-    }
-  }, [code, notify, preloadState]);
-
-  useEffect(() => {
-    loadData();
-    return () => {
-      // cleanup timeout and reset cache so reopening same code triggers fetch
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-      }
-      lastLoadedCode.current = null;
-      dataRef.current = null;
-    };
-  }, [loadData]);
-
-  // Rola para o topo quando muda o produto
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [code]);
-
-  // Define aba inicial ao carregar/atualizar os dados do produto
-  /* eslint-disable react-hooks/exhaustive-deps */
-  // searchParams/setSearchParams intentionally omitted – including them causes infinite loops
-  useEffect(() => {
-    if (!data) return;
-
-    // Sempre define a aba inicial quando os dados do produto são carregados
-
-    const context = searchParams.get("context");
-
-    if (context === "from-conjunto") {
-      const memberships = getMemberships(data);
-      if (memberships.length > 0) {
-        setActiveTab("memberships");
-        setSearchParams(new URLSearchParams(), { replace: true });
-        return;
-      }
-    } else if (context === "from-piece") {
-      const conjuntos = getConjuntos(data);
-      if (conjuntos.length > 0) {
-        setActiveTab("conjuntos");
-        setSearchParams(new URLSearchParams(), { replace: true });
-        return;
-      }
-    }
-
-    // Lógica padrão de prioridade (apenas na primeira carga deste produto)
-    const conjuntos = getConjuntos(data);
-    const memberships = getMemberships(data);
-
-    if (conjuntos.length > 0) {
-      setActiveTab("conjuntos");
-    } else if (memberships.length > 0) {
-      setActiveTab("memberships");
-    } else if (getBenchmarks(data).length > 0) {
-      setActiveTab("benchmarks");
-    } else if (getAplicacoes(data).length > 0) {
-      setActiveTab("aplicacoes");
-    }
-  }, [data, code]);
-  /* eslint-enable react-hooks/exhaustive-deps */
+    if (conj.length > 0) return "conjuntos";
+    if (mem.length > 0) return "memberships";
+    if (bench.length > 0) return "benchmarks";
+    if (aplic.length > 0) return "aplicacoes";
+    return "conjuntos"; // default
+  };
 
   // Funções auxiliares para extrair dados
   const getProduct = (data) => {
@@ -297,36 +105,298 @@ function ProductDetailsPage() {
     return { ...c, filho, filho_des, qtd_explosao };
   };
 
-  const product = getProduct(data);
-  const conjuntos = getConjuntos(data);
-  const normalizedConjuntos = conjuntos.map(normalizeConjuntoItem).filter(Boolean);
-  const validConjuntos = normalizedConjuntos.filter((c) => String(c.filho).trim() !== "");
-  const memberships = getMemberships(data);
-  const benchmarks = getBenchmarks(data);
-  const aplicacoes = getAplicacoes(data);
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
+
+  // Reset de estados quando muda o produto
+  useEffect(() => {
+    userSelectedTabRef.current = false;
+    setImageError(false);
+    setLightboxOpen(false);
+    // não forçamos activeTab aqui porque o loadData decide a aba inicial
+    // e o usuário pode navegar por histórico.
+  }, [code]);
+
+  // Clique de abas (marca como ação do usuário)
+  const handleTabClick = useCallback((tabKey) => {
+    userSelectedTabRef.current = true;
+    setActiveTab(tabKey);
+  }, []);
+
+  const loadData = useCallback(
+    async (context = null) => {
+      // Limpa timeout anterior
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+      }
+
+      try {
+        loadingRef.current = true;
+        setLoading(true);
+        setError("");
+
+        if (!code || typeof code !== "string" || code.trim().length === 0) {
+          throw new Error("Código do produto inválido");
+        }
+
+        // Evita recarregar o mesmo produto
+        if (lastLoadedCode.current === code && dataRef.current) {
+          loadingRef.current = false;
+          setLoading(false);
+          return;
+        }
+
+        // Se for um novo produto, permitimos definir a aba automaticamente.
+        // Se for o mesmo produto e o usuário já escolheu uma aba manualmente,
+        // NÃO sobrescrevemos o activeTab.
+        const canAutoPickTab = !userSelectedTabRef.current;
+
+        // Timeout de fallback para loading
+        loadingTimeoutRef.current = setTimeout(() => {
+          if (loadingRef.current) {
+            console.warn(`Timeout no carregamento do produto ${code}`);
+            loadingRef.current = false;
+            setLoading(false);
+            notify.warning("Carregamento está demorando mais que o esperado...");
+          }
+        }, 5000);
+
+        // Primeiro, tenta obter do cache
+        let usedSnapshot = false;
+
+        // Se temos snapshot pré-carregado, extrai dados completos (conjuntos, aplicacoes, etc)
+        if (preloadState && preloadState.loaded && preloadState.snapshot) {
+          const snap = preloadState.snapshot;
+          const normalizedCode = String(code || "").toUpperCase().replace(/\s+/g, "").trim();
+
+          // Procura o produto no snapshot
+          let product = (Array.isArray(snap.products) ? snap.products : []).find(
+            (p) =>
+              String(p.codigo || p.code || p.id || "")
+                .toUpperCase()
+                .replace(/\s+/g, "")
+                .trim() === normalizedCode
+          );
+
+          // Se não encontrou como produto, pode ser um conjunto pai
+          if (!product) {
+            const conjuntoRelations = (Array.isArray(snap.conjuntos) ? snap.conjuntos : []).filter(
+              (c) =>
+                String(c.pai || c.codigo_conjunto || "")
+                  .toUpperCase()
+                  .replace(/\s+/g, "") === normalizedCode
+            );
+            if (conjuntoRelations.length > 0) {
+              product = (Array.isArray(snap.products) ? snap.products : []).find(
+                (p) =>
+                  String(p.codigo || p.code || p.id || "")
+                    .toUpperCase()
+                    .replace(/\s+/g, "")
+                    .trim() === normalizedCode
+              );
+            }
+          }
+
+          // Se encontrou no snapshot, extrai TODOS os dados relacionados
+          if (product) {
+            const conjuntos = (Array.isArray(snap.conjuntos)
+              ? snap.conjuntos
+                .filter(
+                  (c) =>
+                    String(c.pai || c.codigo_conjunto || "")
+                      .toUpperCase()
+                      .replace(/\s+/g, "") === normalizedCode
+                )
+                .map((c) => ({
+                  filho: c.filho || c.codigo || c.codigo_componente || "",
+                  filho_des: c.filho_des || c.descricao || c.des || null,
+                  qtd_explosao: c.qtd_explosao || c.quantidade || c.qtd || 1,
+                }))
+              : []);
+
+            const aplicacoes = (Array.isArray(snap.aplicacoes)
+              ? snap.aplicacoes.filter(
+                (a) =>
+                  String(a.codigo_conjunto || "")
+                    .toUpperCase()
+                    .replace(/\s+/g, "") === normalizedCode
+              )
+              : []);
+
+            const benchmarks = (Array.isArray(snap.benchmarks)
+              ? snap.benchmarks.filter(
+                (b) =>
+                  String(b.codigo || "")
+                    .toUpperCase()
+                    .replace(/\s+/g, "") === normalizedCode
+              )
+              : []);
+
+            const memberships = (Array.isArray(snap.conjuntos)
+              ? snap.conjuntos
+                .filter(
+                  (c) =>
+                    String(c.filho || "")
+                      .toUpperCase()
+                      .replace(/\s+/g, "") === normalizedCode
+                )
+                .map((c) => ({
+                  codigo_conjunto: c.pai || c.codigo_conjunto || "",
+                  quantidade: c.qtd_explosao || c.quantidade || c.qtd || 1,
+                }))
+              : []);
+
+            setData({ data: { product, conjuntos, aplicacoes, benchmarks, memberships } });
+
+            // define aba inicial com base no argumento 'context' e nos dados
+            try {
+              if (canAutoPickTab) {
+                const tab = determineInitialTab(conjuntos, memberships, benchmarks, aplicacoes, context);
+                setActiveTab(tab);
+              }
+            } catch (e) {
+              /* ignore */
+            }
+
+            usedSnapshot = true;
+            lastLoadedCode.current = code;
+          }
+        }
+
+        // Se NÃO encontrou no snapshot, tenta API
+        if (!usedSnapshot) {
+          try {
+            const result = await fetchProductDetails(code);
+            if (result && typeof result === "object") {
+              setData(result);
+
+              try {
+                const conjuntosApi = Array.isArray(result?.data?.conjuntos)
+                  ? result.data.conjuntos
+                  : Array.isArray(result?.conjuntos)
+                    ? result.conjuntos
+                    : [];
+                const membershipsApi = Array.isArray(result?.data?.memberships)
+                  ? result.data.memberships
+                  : Array.isArray(result?.memberships)
+                    ? result.memberships
+                    : [];
+                const benchmarksApi = Array.isArray(result?.data?.benchmarks)
+                  ? result.data.benchmarks
+                  : Array.isArray(result?.benchmarks)
+                    ? result.benchmarks
+                    : [];
+                const aplicacoesApi = Array.isArray(result?.data?.aplicacoes)
+                  ? result.data.aplicacoes
+                  : Array.isArray(result?.aplicacoes)
+                    ? result.aplicacoes
+                    : [];
+
+                const pickApi = () => {
+                  if (context === "from-conjunto" && membershipsApi.length > 0) return "memberships";
+                  if (context === "from-piece" && conjuntosApi.length > 0) return "conjuntos";
+                  if (conjuntosApi.length > 0) return "conjuntos";
+                  if (membershipsApi.length > 0) return "memberships";
+                  if (benchmarksApi.length > 0) return "benchmarks";
+                  if (aplicacoesApi.length > 0) return "aplicacoes";
+                  return "conjuntos";
+                };
+
+                if (canAutoPickTab) {
+                  setActiveTab(pickApi());
+                }
+              } catch (e) {
+                /* ignore */
+              }
+
+              lastLoadedCode.current = code;
+            }
+          } catch (apiErr) {
+            console.error("ProductDetailsPage: API failed:", apiErr);
+            throw new Error(`Produto não encontrado: ${code}`);
+          }
+        } else {
+          console.log(" ProductDetailsPage: Skipping API call since snapshot data was found");
+        }
+      } catch (err) {
+        const errorMsg = err?.message || "Erro desconhecido ao carregar detalhes";
+        console.error("Erro ao carregar detalhes:", errorMsg);
+        notify.error(errorMsg);
+        setError(errorMsg);
+        setData(null);
+      } finally {
+        loadingRef.current = false;
+        setLoading(false);
+        if (loadingTimeoutRef.current) {
+          clearTimeout(loadingTimeoutRef.current);
+        }
+      }
+    },
+    // Dependências estáveis: preloadState é um objeto que muda por referência.
+    // Preferimos depender apenas do que importa (loaded + snapshot).
+    [code, notify, preloadState?.loaded, preloadState?.snapshot]
+  );
+
+  // ✅ Em vez de depender do objeto searchParams inteiro, pegamos só o valor "context"
+  const context = searchParams.get("context");
+
+  useEffect(() => {
+    loadData(context);
+
+    // se existir context, limpa para não persistir
+    if (context) {
+      setSearchParams(new URLSearchParams(), { replace: true });
+    }
+
+    return () => {
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+      }
+      lastLoadedCode.current = null;
+      dataRef.current = null;
+    };
+  }, [loadData, context, setSearchParams]);
+
+  // Rola para o topo quando muda o produto
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [code]);
+
+  // ✅ Memoiza para não criar novos arrays em cada render (isso causava logs "sem parar")
+  const product = useMemo(() => getProduct(data), [data]);
+  const conjuntos = useMemo(() => getConjuntos(data), [data]);
+  const memberships = useMemo(() => getMemberships(data), [data]);
+  const benchmarks = useMemo(() => getBenchmarks(data), [data]);
+  const aplicacoes = useMemo(() => getAplicacoes(data), [data]);
+
+  const validConjuntos = useMemo(() => {
+    const normalized = (Array.isArray(conjuntos) ? conjuntos : [])
+      .map(normalizeConjuntoItem)
+      .filter(Boolean);
+    return normalized.filter((c) => String(c.filho).trim() !== "");
+  }, [conjuntos]);
 
   // Enriquece memberships com nomes
-  const enrichedMemberships = memberships.map((membership) => {
-    const cachedProduct = getFromProductsCache(membership.codigo_conjunto);
-    return {
-      ...membership,
-      nome_conjunto: cachedProduct?.descricao || `Conjunto ${membership.codigo_conjunto}`,
-    };
-  });
+  const enrichedMemberships = useMemo(() => {
+    const memArr = Array.isArray(memberships) ? memberships : [];
+    return memArr.map((membership) => {
+      const cachedProduct = getFromProductsCache(membership.codigo_conjunto);
+      return {
+        ...membership,
+        nome_conjunto: cachedProduct?.descricao || `Conjunto ${membership.codigo_conjunto}`,
+      };
+    });
+  }, [memberships, getFromProductsCache]);
 
   const handleBackClick = useCallback(() => {
     setIsNavigating(true);
 
-    // When leaving the page we want to clear the lastLoadedCode so that
-    // reopening the same product forces a reload. This fixes the issue where
-    // returning and clicking on the same item had no effect.
     lastLoadedCode.current = null;
     dataRef.current = null;
 
-    // Tenta voltar usando o sistema de navegação
     const success = goBackToPreviousProduct("/");
 
-    // Fallback visual se não houver navegação imediata
     setTimeout(() => setIsNavigating(false), 300);
 
     return success;
@@ -347,7 +417,6 @@ function ProductDetailsPage() {
         navigateToProduct(pieceCode, { type: contextType });
       }
 
-      // Reset do estado de navegação após delay
       setTimeout(() => setIsNavigating(false), 300);
     },
     [code, navigateToConjuntoPiece, navigateToMembershipConjunto, navigateToProduct]
@@ -368,16 +437,20 @@ function ProductDetailsPage() {
   const handlePrint = useCallback(() => {
     if (!product) return;
 
-    const logoPath = '/logo192.png';
+    const logoPath = "/logo192.png";
     const productImage = getImageUrl();
 
     const renderItemsList = (items) => {
       const useColumns = items.length > 10;
       const colCount = items.length > 20 ? 3 : 2;
-      const style = useColumns ? `column-count: ${colCount}; column-gap: 24px;` : '';
+      const style = useColumns ? `column-count: ${colCount}; column-gap: 24px;` : "";
       return `<ul class="print-list" style="${style}">${items
-        .map((it) => `<li><strong>${it.filho || it.codigo || it.codigo_conjunto || it.numero_original || it.veiculo || ''}</strong> — ${it.filho_des || it.descricao || it.nome_conjunto || it.origem || it.fabricante || ''} ${it.modelo ? '- ' + it.modelo : ''} ${it.ano ? '(' + it.ano + ')' : ''}</li>`)
-        .join('')}</ul>`;
+        .map(
+          (it) =>
+            `<li><strong>${it.filho || it.codigo || it.codigo_conjunto || it.numero_original || it.veiculo || ""}</strong> — ${it.filho_des || it.descricao || it.nome_conjunto || it.origem || it.fabricante || ""
+            } ${it.modelo ? "- " + it.modelo : ""} ${it.ano ? "(" + it.ano + ")" : ""}</li>`
+        )
+        .join("")}</ul>`;
     };
 
     const style = `
@@ -400,34 +473,32 @@ function ProductDetailsPage() {
       @media print{ .page{padding:12mm} .logo{width:72px;height:72px} }
     `;
 
-    // Build pages
     let pages = [];
 
-    // First page: main product and large image
     pages.push(`
       <div class="page">
         <div class="header">
           <img src="${logoPath}" class="logo" alt="Logo" />
           <div>
-            <h1 class="title">${product.descricao || ''}</h1>
-            <div class="subtitle">Código: <strong>${product.codigo || ''}</strong> &nbsp; • &nbsp; Grupo: <strong>${product.grupo || '—'}</strong></div>
+            <h1 class="title">${product.descricao || ""}</h1>
+            <div class="subtitle">Código: <strong>${product.codigo || ""}</strong> &nbsp; • &nbsp; Grupo: <strong>${product.grupo || "—"
+      }</strong></div>
             <div class="meta-line">Gerado em: ${new Date().toLocaleString()}</div>
           </div>
         </div>
         <div class="divider"></div>
         <div>
-          <img src="${productImage}" class="product-image-large" alt="${product.codigo || ''} - ${product.descricao || ''}" />
+          <img src="${productImage}" class="product-image-large" alt="${product.codigo || ""} - ${product.descricao || ""}" />
         </div>
       </div>
       <div class="page-break"></div>
     `);
 
-    // Sections - each section starts on new page; if > 10 items, divide in columns
     const sections = [
-      { key: 'Peças do Conjunto', items: validConjuntos },
-      { key: 'Usado em Conjuntos', items: enrichedMemberships },
-      { key: 'Benchmarks', items: benchmarks },
-      { key: 'Aplicações', items: aplicacoes },
+      { key: "Peças do Conjunto", items: validConjuntos },
+      { key: "Usado em Conjuntos", items: enrichedMemberships },
+      { key: "Benchmarks", items: benchmarks },
+      { key: "Aplicações", items: aplicacoes },
     ];
 
     sections.forEach((sec) => {
@@ -448,11 +519,14 @@ function ProductDetailsPage() {
       `);
     });
 
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Ficha - ${product.codigo || ''}</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>${style}</style></head><body>${pages.join('')}</body></html>`;
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Ficha - ${product.codigo || ""
+      }</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>${style}</style></head><body>${pages.join(
+        ""
+      )}</body></html>`;
 
-    const w = window.open('', '_blank');
+    const w = window.open("", "_blank");
     if (!w) {
-      notify.error('Não foi possível abrir a janela de impressão. Verifique bloqueadores de pop-up.');
+      notify.error("Não foi possível abrir a janela de impressão. Verifique bloqueadores de pop-up.");
       return;
     }
 
@@ -462,8 +536,14 @@ function ProductDetailsPage() {
     w.focus();
     w.onload = () => {
       setTimeout(() => {
-        try { w.print(); } catch (e) { console.warn('Erro ao imprimir:', e); }
-        try { w.close(); } catch (e) { }
+        try {
+          w.print();
+        } catch (e) {
+          console.warn("Erro ao imprimir:", e);
+        }
+        try {
+          w.close();
+        } catch (e) { }
       }, 500);
     };
   }, [product, getImageUrl, validConjuntos, enrichedMemberships, benchmarks, aplicacoes, notify]);
@@ -486,6 +566,7 @@ function ProductDetailsPage() {
           <div className="product-navigation">
             <div className="navigation-actions">
               <button
+                type="button"
                 className="action-btn copy-btn"
                 onClick={handleCopyCode}
                 title="Copiar código"
@@ -582,8 +663,9 @@ function ProductDetailsPage() {
               <div className="product-tabs">
                 {validConjuntos.length > 0 && (
                   <button
+                    type="button"
                     className={`tab-btn ${activeTab === "conjuntos" ? "active" : ""}`}
-                    onClick={() => setActiveTab("conjuntos")}
+                    onClick={() => handleTabClick("conjuntos")}
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M20.42 4.58a5.4 5.4 0 0 0-7.65 0l-.77.78-.77-.78a5.4 5.4 0 0 0-7.65 0C1.46 6.7 1.33 10.28 4 13l8 8 8-8c2.67-2.72 2.54-6.3.42-8.42z" />
@@ -595,8 +677,9 @@ function ProductDetailsPage() {
 
                 {memberships.length > 0 && (
                   <button
+                    type="button"
                     className={`tab-btn ${activeTab === "memberships" ? "active" : ""}`}
-                    onClick={() => setActiveTab("memberships")}
+                    onClick={() => handleTabClick("memberships")}
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -611,8 +694,9 @@ function ProductDetailsPage() {
 
                 {benchmarks.length > 0 && (
                   <button
+                    type="button"
                     className={`tab-btn ${activeTab === "benchmarks" ? "active" : ""}`}
-                    onClick={() => setActiveTab("benchmarks")}
+                    onClick={() => handleTabClick("benchmarks")}
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
@@ -627,8 +711,9 @@ function ProductDetailsPage() {
 
                 {aplicacoes.length > 0 && (
                   <button
+                    type="button"
                     className={`tab-btn ${activeTab === "aplicacoes" ? "active" : ""}`}
-                    onClick={() => setActiveTab("aplicacoes")}
+                    onClick={() => handleTabClick("aplicacoes")}
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
@@ -734,14 +819,7 @@ function ProductDetailsPage() {
                               </div>
                               <div className="aplicacao-details">
                                 <div className="aplicacao-info">
-                                  <svg
-                                    width="16"
-                                    height="16"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                  >
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                     <path d="M20 7h-9" />
                                     <path d="M14 17H5" />
                                     <circle cx="17" cy="17" r="3" />
@@ -752,14 +830,7 @@ function ProductDetailsPage() {
 
                                 {modelo && (
                                   <div className="aplicacao-info">
-                                    <svg
-                                      width="16"
-                                      height="16"
-                                      viewBox="0 0 24 24"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      strokeWidth="2"
-                                    >
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                       <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
                                       <line x1="3" y1="9" x2="21" y2="9" />
                                       <line x1="9" y1="21" x2="9" y2="9" />
@@ -770,14 +841,7 @@ function ProductDetailsPage() {
 
                                 {ano && (
                                   <div className="aplicacao-info">
-                                    <svg
-                                      width="16"
-                                      height="16"
-                                      viewBox="0 0 24 24"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      strokeWidth="2"
-                                    >
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                       <circle cx="12" cy="12" r="10" />
                                       <polyline points="12 6 12 12 16 14" />
                                     </svg>
@@ -795,7 +859,12 @@ function ProductDetailsPage() {
               </div>
 
               <div className="product-actions-footer">
-                <button className="action-btn secondary" onClick={handleBackClick} disabled={isNavigating}>
+                <button
+                  type="button"
+                  className="action-btn secondary"
+                  onClick={handleBackClick}
+                  disabled={isNavigating}
+                >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M19 12H5M12 19l-7-7 7-7" />
                   </svg>
@@ -803,7 +872,7 @@ function ProductDetailsPage() {
                 </button>
 
                 <div className="action-group">
-                  <button className="action-btn" onClick={handlePrint} disabled={isNavigating}>
+                  <button type="button" className="action-btn" onClick={handlePrint} disabled={isNavigating}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <polyline points="6 9 6 2 18 2 18 9" />
                       <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
@@ -812,7 +881,7 @@ function ProductDetailsPage() {
                     Imprimir
                   </button>
 
-                  <button className="action-btn primary" onClick={handleCopyCode} disabled={isNavigating}>
+                  <button type="button" className="action-btn primary" onClick={handleCopyCode} disabled={isNavigating}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
                       <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
