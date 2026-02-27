@@ -310,7 +310,7 @@ export function NavigationProvider({ children }) {
 
         lastNavigationRef.current = { path, timestamp: now };
         navigate(path, { state: routeState });
-    }, [navigate, state.navigationStack]);
+    }, [navigate, state.navigationStack, location.pathname]);
 
     // Função para voltar com validação de histórico
     const goBack = useCallback(() => {
