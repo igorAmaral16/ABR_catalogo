@@ -226,7 +226,8 @@ function ProductDetailsPage() {
   }, [code]);
 
   // Define aba inicial ao carregar/atualizar os dados do produto
-  // eslint-disable-next-line react-hooks/exhaustive-deps (searchParams/setSearchParams intentionally omitted)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // searchParams/setSearchParams intentionally omitted – including them causes infinite loops
   useEffect(() => {
     if (!data) return;
 
