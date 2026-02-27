@@ -48,7 +48,7 @@ function ProductDetailsPage() {
   // refs para evitar dependências instáveis no loadData
   const dataRef = useRef(null);
   const loadingRef = useRef(false);
-  const isFirstLoadRef = useRef(true);
+  const lastTabSetCodeRef = useRef(null);
 
   useEffect(() => {
     dataRef.current = data;
@@ -209,8 +209,6 @@ function ProductDetailsPage() {
   }, [code, notify, preloadState]);
 
   useEffect(() => {
-    // Reset flag quando o código do produto muda
-    isFirstLoadRef.current = true;
     loadData();
     return () => {
       // cleanup timeout and reset cache so reopening same code triggers fetch
@@ -219,7 +217,6 @@ function ProductDetailsPage() {
       }
       lastLoadedCode.current = null;
       dataRef.current = null;
-      isFirstLoadRef.current = true; // Reset flag quando saindo da página
     };
   }, [loadData]);
 
@@ -232,9 +229,9 @@ function ProductDetailsPage() {
   useEffect(() => {
     if (!data) return;
 
-    // Só roda na primeira vez que data é carregado
-    if (!isFirstLoadRef.current) return;
-    isFirstLoadRef.current = false;
+    // Só executa a lógica de aba inicial se ainda não foi feito para este produto
+    if (lastTabSetCodeRef.current === code) return;
+    lastTabSetCodeRef.current = code;
 
     const context = searchParams.get("context");
 
@@ -254,7 +251,7 @@ function ProductDetailsPage() {
       }
     }
 
-    // Lógica padrão de prioridade (apenas na primeira carga)
+    // Lógica padrão de prioridade (apenas na primeira carga deste produto)
     const conjuntos = getConjuntos(data);
     const memberships = getMemberships(data);
 
@@ -267,7 +264,7 @@ function ProductDetailsPage() {
     } else if (getAplicacoes(data).length > 0) {
       setActiveTab("aplicacoes");
     }
-  }, [data]);
+  }, [data, code]);
 
   // Funções auxiliares para extrair dados
   const getProduct = (data) => {
