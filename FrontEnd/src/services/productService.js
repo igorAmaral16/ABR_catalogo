@@ -353,6 +353,8 @@ export function filterCatalogSnapshot(snapshot, filters = {}, page = 1, limit = 
   const hasAplicFilter = !!(fabricanteFilter || tipoVeiculoFilter || linhaFilter);
   if (hasAplicFilter) {
     matchingCodes = new Set();
+
+    // First, collect codes from appByConjunto as before
     for (const [codigo_conjunto, apps] of appByConjunto.entries()) {
       const matchesFab = fabricanteFilter
         ? apps.some((a) => normalizeString(a.fabricante || "").includes(fabricanteFilter))
@@ -367,6 +369,27 @@ export function filterCatalogSnapshot(snapshot, filters = {}, page = 1, limit = 
         matchingCodes.add(codigo_conjunto);
         const filhos = conjuntoChildrenMap.get(codigo_conjunto) || [];
         filhos.forEach((f) => matchingCodes.add(f));
+      }
+    }
+
+    // Additionally include standalone products (not part of any conjunto)
+    // that match the fabricante/tipo/linha criteria based on their own fields.
+    for (const item of items) {
+      const code = item.codigo;
+      if (matchingCodes.has(code)) continue; // already included
+
+      let fabMatch = true;
+      if (fabricanteFilter) {
+        fabMatch = normalizeString(item.fabricante || "").includes(fabricanteFilter);
+      }
+
+      let tipoMatch = true;
+      if (tipoVeiculoFilter || linhaFilter) {
+        tipoMatch = matchesAplicacaoSigla(item.sigla_tipo || "", tipoVeiculoFilter, linhaFilter);
+      }
+
+      if (fabMatch && tipoMatch) {
+        matchingCodes.add(code);
       }
     }
   }
