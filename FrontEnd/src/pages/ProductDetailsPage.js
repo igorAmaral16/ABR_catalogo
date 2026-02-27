@@ -48,7 +48,6 @@ function ProductDetailsPage() {
   // refs para evitar dependências instáveis no loadData
   const dataRef = useRef(null);
   const loadingRef = useRef(false);
-  const lastTabSetCodeRef = useRef(null);
 
   useEffect(() => {
     dataRef.current = data;
@@ -231,9 +230,7 @@ function ProductDetailsPage() {
   useEffect(() => {
     if (!data) return;
 
-    // Só executa a lógica de aba inicial se ainda não foi feito para este produto
-    if (lastTabSetCodeRef.current === code) return;
-    lastTabSetCodeRef.current = code;
+    // Sempre define a aba inicial quando os dados do produto são carregados
 
     const context = searchParams.get("context");
 
