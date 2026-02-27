@@ -286,8 +286,9 @@ export function NavigationProvider({ children }) {
             const productCode = path.split('/produtos/')[1];
             const lastProduct = state.navigationStack[state.navigationStack.length - 1];
 
-            // Previne navegação circular imediata
-            if (lastProduct === productCode) {
+            // Previne navegação circular imediata **somente se já estamos** nesse produto
+            // Caso contrário permitimos navegar para ele novamente (por ex. após voltar ao catálogo).
+            if (lastProduct === productCode && location.pathname === path) {
                 console.warn('Prevenido loop de navegação para o mesmo produto:', productCode);
                 return;
             }
