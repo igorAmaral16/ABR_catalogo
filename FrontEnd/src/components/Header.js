@@ -41,8 +41,12 @@ function Header({
           )}
           <div className="brand-content" onClick={handleLogoClick} style={{ cursor: 'pointer' }}>
             {showLogo ? (
+              // use PUBLIC_URL so asset resolves both in dev and in production
+              // the actual file in public/images is lowercase ".png"; windows is
+              // case-insensitive but Vercel's build is not. this avoids the
+              // erroneous "LOGO_ABR.PNG" path and ensures correct loading.
               <img
-                src="/images/LOGO_ABR.PNG"
+                src={`${process.env.PUBLIC_URL}/images/LOGO_ABR.png`}
                 alt={title}
                 className="header-logo"
               />
