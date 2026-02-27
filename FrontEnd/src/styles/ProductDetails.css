@@ -955,8 +955,9 @@
 }
 
 .product-transition.navigating {
-  pointer-events: none;
-  user-select: none;
+  /* allow pointer events so internal controls (tabs, buttons) remain clickable
+     while a product transition animation or navigation flag is active */
+  /* pointer-events and user-select intentionally left unrestricted */
 }
 
 @keyframes slideIn {
