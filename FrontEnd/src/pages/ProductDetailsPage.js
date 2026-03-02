@@ -24,6 +24,10 @@ function ProductDetailsPage() {
 
   const { preloadState, getFromProductsCache } = useCatalogState();
 
+  // ✅ Extrai valores estáveis para o Hook (corrige erro do ESLint no Vercel)
+  const preloadLoaded = preloadState?.loaded;
+  const preloadSnapshot = preloadState?.snapshot;
+
   const {
     navigateToProduct,
     navigateToConjuntoPiece,
@@ -44,14 +48,12 @@ function ProductDetailsPage() {
   const loadingTimeoutRef = useRef(null);
 
   // Quando o usuário clica numa aba, NÃO queremos que o loadData sobrescreva o activeTab
-  // (isso era o que fazia o botão "marcar" mas o conteúdo voltar para a aba inicial).
   const userSelectedTabRef = useRef(false);
 
   // refs para evitar dependências instáveis no loadData
   const dataRef = useRef(null);
   const loadingRef = useRef(false);
 
-  // escolhe a aba inicial com base nos dados disponíveis e contexto opcional
   const determineInitialTab = (
     conjuntosArr,
     membershipsArr,
@@ -71,32 +73,27 @@ function ProductDetailsPage() {
     if (mem.length > 0) return "memberships";
     if (bench.length > 0) return "benchmarks";
     if (aplic.length > 0) return "aplicacoes";
-    return "conjuntos"; // default
+    return "conjuntos";
   };
 
-  // Funções auxiliares para extrair dados
-  const getProduct = (data) => {
-    const result = data?.data?.product || data?.product;
-    return result;
-  };
-  const getConjuntos = (data) => {
-    const raw = data?.data?.conjuntos || data?.conjuntos || [];
+  const getProduct = (d) => d?.data?.product || d?.product;
+  const getConjuntos = (d) => {
+    const raw = d?.data?.conjuntos || d?.conjuntos || [];
     return Array.isArray(raw) ? raw : [];
   };
-  const getMemberships = (data) => {
-    const raw = data?.data?.memberships || data?.memberships || [];
+  const getMemberships = (d) => {
+    const raw = d?.data?.memberships || d?.memberships || [];
     return Array.isArray(raw) ? raw : [];
   };
-  const getBenchmarks = (data) => {
-    const raw = data?.data?.benchmarks || data?.benchmarks || [];
+  const getBenchmarks = (d) => {
+    const raw = d?.data?.benchmarks || d?.benchmarks || [];
     return Array.isArray(raw) ? raw : [];
   };
-  const getAplicacoes = (data) => {
-    const raw = data?.data?.aplicacoes || data?.aplicacoes || [];
+  const getAplicacoes = (d) => {
+    const raw = d?.data?.aplicacoes || d?.aplicacoes || [];
     return Array.isArray(raw) ? raw : [];
   };
 
-  // Normaliza conjuntos
   const normalizeConjuntoItem = (c) => {
     if (!c || typeof c !== "object") return null;
     const filho = (c.filho || c.codigo || c.code || c.child || c.filho_codigo || "").toString();
@@ -109,16 +106,12 @@ function ProductDetailsPage() {
     dataRef.current = data;
   }, [data]);
 
-  // Reset de estados quando muda o produto
   useEffect(() => {
     userSelectedTabRef.current = false;
     setImageError(false);
     setLightboxOpen(false);
-    // não forçamos activeTab aqui porque o loadData decide a aba inicial
-    // e o usuário pode navegar por histórico.
   }, [code]);
 
-  // Clique de abas (marca como ação do usuário)
   const handleTabClick = useCallback((tabKey) => {
     userSelectedTabRef.current = true;
     setActiveTab(tabKey);
@@ -126,10 +119,7 @@ function ProductDetailsPage() {
 
   const loadData = useCallback(
     async (context = null) => {
-      // Limpa timeout anterior
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-      }
+      if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
 
       try {
         loadingRef.current = true;
@@ -140,19 +130,14 @@ function ProductDetailsPage() {
           throw new Error("Código do produto inválido");
         }
 
-        // Evita recarregar o mesmo produto
         if (lastLoadedCode.current === code && dataRef.current) {
           loadingRef.current = false;
           setLoading(false);
           return;
         }
 
-        // Se for um novo produto, permitimos definir a aba automaticamente.
-        // Se for o mesmo produto e o usuário já escolheu uma aba manualmente,
-        // NÃO sobrescrevemos o activeTab.
         const canAutoPickTab = !userSelectedTabRef.current;
 
-        // Timeout de fallback para loading
         loadingTimeoutRef.current = setTimeout(() => {
           if (loadingRef.current) {
             console.warn(`Timeout no carregamento do produto ${code}`);
@@ -162,15 +147,13 @@ function ProductDetailsPage() {
           }
         }, 5000);
 
-        // Primeiro, tenta obter do cache
         let usedSnapshot = false;
 
-        // Se temos snapshot pré-carregado, extrai dados completos (conjuntos, aplicacoes, etc)
-        if (preloadState && preloadState.loaded && preloadState.snapshot) {
-          const snap = preloadState.snapshot;
+        // ✅ Usa preloadLoaded/preloadSnapshot (não usa preloadState direto)
+        if (preloadLoaded && preloadSnapshot) {
+          const snap = preloadSnapshot;
           const normalizedCode = String(code || "").toUpperCase().replace(/\s+/g, "").trim();
 
-          // Procura o produto no snapshot
           let product = (Array.isArray(snap.products) ? snap.products : []).find(
             (p) =>
               String(p.codigo || p.code || p.id || "")
@@ -179,7 +162,6 @@ function ProductDetailsPage() {
                 .trim() === normalizedCode
           );
 
-          // Se não encontrou como produto, pode ser um conjunto pai
           if (!product) {
             const conjuntoRelations = (Array.isArray(snap.conjuntos) ? snap.conjuntos : []).filter(
               (c) =>
@@ -198,9 +180,8 @@ function ProductDetailsPage() {
             }
           }
 
-          // Se encontrou no snapshot, extrai TODOS os dados relacionados
           if (product) {
-            const conjuntos = (Array.isArray(snap.conjuntos)
+            const conjuntos = Array.isArray(snap.conjuntos)
               ? snap.conjuntos
                 .filter(
                   (c) =>
@@ -213,27 +194,27 @@ function ProductDetailsPage() {
                   filho_des: c.filho_des || c.descricao || c.des || null,
                   qtd_explosao: c.qtd_explosao || c.quantidade || c.qtd || 1,
                 }))
-              : []);
+              : [];
 
-            const aplicacoes = (Array.isArray(snap.aplicacoes)
+            const aplicacoes = Array.isArray(snap.aplicacoes)
               ? snap.aplicacoes.filter(
                 (a) =>
                   String(a.codigo_conjunto || "")
                     .toUpperCase()
                     .replace(/\s+/g, "") === normalizedCode
               )
-              : []);
+              : [];
 
-            const benchmarks = (Array.isArray(snap.benchmarks)
+            const benchmarks = Array.isArray(snap.benchmarks)
               ? snap.benchmarks.filter(
                 (b) =>
                   String(b.codigo || "")
                     .toUpperCase()
                     .replace(/\s+/g, "") === normalizedCode
               )
-              : []);
+              : [];
 
-            const memberships = (Array.isArray(snap.conjuntos)
+            const memberships = Array.isArray(snap.conjuntos)
               ? snap.conjuntos
                 .filter(
                   (c) =>
@@ -245,18 +226,13 @@ function ProductDetailsPage() {
                   codigo_conjunto: c.pai || c.codigo_conjunto || "",
                   quantidade: c.qtd_explosao || c.quantidade || c.qtd || 1,
                 }))
-              : []);
+              : [];
 
             setData({ data: { product, conjuntos, aplicacoes, benchmarks, memberships } });
 
-            // define aba inicial com base no argumento 'context' e nos dados
-            try {
-              if (canAutoPickTab) {
-                const tab = determineInitialTab(conjuntos, memberships, benchmarks, aplicacoes, context);
-                setActiveTab(tab);
-              }
-            } catch (e) {
-              /* ignore */
+            if (canAutoPickTab) {
+              const tab = determineInitialTab(conjuntos, memberships, benchmarks, aplicacoes, context);
+              setActiveTab(tab);
             }
 
             usedSnapshot = true;
@@ -264,60 +240,45 @@ function ProductDetailsPage() {
           }
         }
 
-        // Se NÃO encontrou no snapshot, tenta API
         if (!usedSnapshot) {
-          try {
-            const result = await fetchProductDetails(code);
-            if (result && typeof result === "object") {
-              setData(result);
+          const result = await fetchProductDetails(code);
+          if (result && typeof result === "object") {
+            setData(result);
 
-              try {
-                const conjuntosApi = Array.isArray(result?.data?.conjuntos)
-                  ? result.data.conjuntos
-                  : Array.isArray(result?.conjuntos)
-                    ? result.conjuntos
-                    : [];
-                const membershipsApi = Array.isArray(result?.data?.memberships)
-                  ? result.data.memberships
-                  : Array.isArray(result?.memberships)
-                    ? result.memberships
-                    : [];
-                const benchmarksApi = Array.isArray(result?.data?.benchmarks)
-                  ? result.data.benchmarks
-                  : Array.isArray(result?.benchmarks)
-                    ? result.benchmarks
-                    : [];
-                const aplicacoesApi = Array.isArray(result?.data?.aplicacoes)
-                  ? result.data.aplicacoes
-                  : Array.isArray(result?.aplicacoes)
-                    ? result.aplicacoes
-                    : [];
+            const conjuntosApi = Array.isArray(result?.data?.conjuntos)
+              ? result.data.conjuntos
+              : Array.isArray(result?.conjuntos)
+                ? result.conjuntos
+                : [];
+            const membershipsApi = Array.isArray(result?.data?.memberships)
+              ? result.data.memberships
+              : Array.isArray(result?.memberships)
+                ? result.memberships
+                : [];
+            const benchmarksApi = Array.isArray(result?.data?.benchmarks)
+              ? result.data.benchmarks
+              : Array.isArray(result?.benchmarks)
+                ? result.benchmarks
+                : [];
+            const aplicacoesApi = Array.isArray(result?.data?.aplicacoes)
+              ? result.data.aplicacoes
+              : Array.isArray(result?.aplicacoes)
+                ? result.aplicacoes
+                : [];
 
-                const pickApi = () => {
-                  if (context === "from-conjunto" && membershipsApi.length > 0) return "memberships";
-                  if (context === "from-piece" && conjuntosApi.length > 0) return "conjuntos";
-                  if (conjuntosApi.length > 0) return "conjuntos";
-                  if (membershipsApi.length > 0) return "memberships";
-                  if (benchmarksApi.length > 0) return "benchmarks";
-                  if (aplicacoesApi.length > 0) return "aplicacoes";
-                  return "conjuntos";
-                };
+            const pickApi = () => {
+              if (context === "from-conjunto" && membershipsApi.length > 0) return "memberships";
+              if (context === "from-piece" && conjuntosApi.length > 0) return "conjuntos";
+              if (conjuntosApi.length > 0) return "conjuntos";
+              if (membershipsApi.length > 0) return "memberships";
+              if (benchmarksApi.length > 0) return "benchmarks";
+              if (aplicacoesApi.length > 0) return "aplicacoes";
+              return "conjuntos";
+            };
 
-                if (canAutoPickTab) {
-                  setActiveTab(pickApi());
-                }
-              } catch (e) {
-                /* ignore */
-              }
-
-              lastLoadedCode.current = code;
-            }
-          } catch (apiErr) {
-            console.error("ProductDetailsPage: API failed:", apiErr);
-            throw new Error(`Produto não encontrado: ${code}`);
+            if (canAutoPickTab) setActiveTab(pickApi());
+            lastLoadedCode.current = code;
           }
-        } else {
-          console.log(" ProductDetailsPage: Skipping API call since snapshot data was found");
         }
       } catch (err) {
         const errorMsg = err?.message || "Erro desconhecido ao carregar detalhes";
@@ -328,42 +289,33 @@ function ProductDetailsPage() {
       } finally {
         loadingRef.current = false;
         setLoading(false);
-        if (loadingTimeoutRef.current) {
-          clearTimeout(loadingTimeoutRef.current);
-        }
+        if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
       }
     },
-    // Dependências estáveis: preloadState é um objeto que muda por referência.
-    // Preferimos depender apenas do que importa (loaded + snapshot).
-    [code, notify, preloadState?.loaded, preloadState?.snapshot]
+    // ✅ Agora ESLint fica satisfeito e Vercel não falha
+    [code, notify, preloadLoaded, preloadSnapshot]
   );
 
-  // ✅ Em vez de depender do objeto searchParams inteiro, pegamos só o valor "context"
   const context = searchParams.get("context");
 
   useEffect(() => {
     loadData(context);
 
-    // se existir context, limpa para não persistir
     if (context) {
       setSearchParams(new URLSearchParams(), { replace: true });
     }
 
     return () => {
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-      }
+      if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
       lastLoadedCode.current = null;
       dataRef.current = null;
     };
   }, [loadData, context, setSearchParams]);
 
-  // Rola para o topo quando muda o produto
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [code]);
 
-  // ✅ Memoiza para não criar novos arrays em cada render (isso causava logs "sem parar")
   const product = useMemo(() => getProduct(data), [data]);
   const conjuntos = useMemo(() => getConjuntos(data), [data]);
   const memberships = useMemo(() => getMemberships(data), [data]);
@@ -377,7 +329,6 @@ function ProductDetailsPage() {
     return normalized.filter((c) => String(c.filho).trim() !== "");
   }, [conjuntos]);
 
-  // Enriquece memberships com nomes
   const enrichedMemberships = useMemo(() => {
     const memArr = Array.isArray(memberships) ? memberships : [];
     return memArr.map((membership) => {
@@ -391,14 +342,10 @@ function ProductDetailsPage() {
 
   const handleBackClick = useCallback(() => {
     setIsNavigating(true);
-
     lastLoadedCode.current = null;
     dataRef.current = null;
-
     const success = goBackToPreviousProduct("/");
-
     setTimeout(() => setIsNavigating(false), 300);
-
     return success;
   }, [goBackToPreviousProduct]);
 
@@ -481,8 +428,7 @@ function ProductDetailsPage() {
           <img src="${logoPath}" class="logo" alt="Logo" />
           <div>
             <h1 class="title">${product.descricao || ""}</h1>
-            <div class="subtitle">Código: <strong>${product.codigo || ""}</strong> &nbsp; • &nbsp; Grupo: <strong>${product.grupo || "—"
-      }</strong></div>
+            <div class="subtitle">Código: <strong>${product.codigo || ""}</strong> &nbsp; • &nbsp; Grupo: <strong>${product.grupo || "—"}</strong></div>
             <div class="meta-line">Gerado em: ${new Date().toLocaleString()}</div>
           </div>
         </div>
@@ -519,10 +465,9 @@ function ProductDetailsPage() {
       `);
     });
 
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Ficha - ${product.codigo || ""
-      }</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>${style}</style></head><body>${pages.join(
-        ""
-      )}</body></html>`;
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Ficha - ${product.codigo || ""}</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>${style}</style></head><body>${pages.join(
+      ""
+    )}</body></html>`;
 
     const w = window.open("", "_blank");
     if (!w) {
@@ -740,7 +685,7 @@ function ProductDetailsPage() {
                     ) : (
                       <ConjuntoGallery
                         conjuntos={validConjuntos}
-                        onPieceClick={(codigo) => handlePieceClick(codigo, "from-conjunto")}
+                        onPieceClick={(codigoPiece) => handlePieceClick(codigoPiece, "from-conjunto")}
                         isLoading={isNavigating}
                       />
                     )}
@@ -760,7 +705,7 @@ function ProductDetailsPage() {
                         filho_des: m.nome_conjunto,
                         qtd_explosao: m.quantidade || 1,
                       }))}
-                      onPieceClick={(codigo) => handlePieceClick(codigo, "from-piece")}
+                      onPieceClick={(codigoConj) => handlePieceClick(codigoConj, "from-piece")}
                       isLoading={isNavigating}
                     />
                   </div>
@@ -778,8 +723,8 @@ function ProductDetailsPage() {
                         <div className="header-cell">Origem / Fabricante</div>
                         <div className="header-cell">Tipo</div>
                       </div>
-                      {benchmarks.map((b) => (
-                        <div key={b.id} className="table-row">
+                      {benchmarks.map((b, i) => (
+                        <div key={b?.id || `${b?.numero_original || "x"}-${b?.origem || "y"}-${i}`} className="table-row">
                           <div className="table-cell original-number">
                             <strong>{b.numero_original || "—"}</strong>
                           </div>
@@ -859,12 +804,7 @@ function ProductDetailsPage() {
               </div>
 
               <div className="product-actions-footer">
-                <button
-                  type="button"
-                  className="action-btn secondary"
-                  onClick={handleBackClick}
-                  disabled={isNavigating}
-                >
+                <button type="button" className="action-btn secondary" onClick={handleBackClick} disabled={isNavigating}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M19 12H5M12 19l-7-7 7-7" />
                   </svg>

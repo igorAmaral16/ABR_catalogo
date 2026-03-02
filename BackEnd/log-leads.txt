@@ -4105,3 +4105,16 @@ URL Atual: http://localhost:3000/?page=1&search=das&sortBy=grupo
 URL de Referência: Direto
 Localização Aproximada: N/A
 ===============================
+
+=== LEAD LOG ENTRY ===
+Data/Hora: 02/03/2026, 07:08:43
+IP do Cliente: localhost
+Idioma do Navegador: pt-BR
+Dispositivo: PC
+Sistema Operacional: Windows 10
+Navegador: Chrome 145.0.0.0
+Plataforma (raw): Windows
+URL Atual: http://localhost:3000/?page=1&search=astra&sortBy=grupo
+URL de Referência: Direto
+Localização Aproximada: N/A
+===============================
