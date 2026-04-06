@@ -6,6 +6,7 @@ import { NotificationProvider } from "./contexts/NotificationContext";
 import ErrorBoundary from "./components/ErrorBoundary";
 import CatalogPage from "./pages/CatalogPage";
 import LoadingSpinner from "./components/LoadingSpinner";
+import ScrollToTop from "./components/ScrollToTop";
 import "./App.css";
 import "./styles/notification.css";
 
@@ -18,6 +19,7 @@ function App() {
     <ErrorBoundary>
       <NotificationProvider>
         <CatalogProvider>
+          <ScrollToTop />
           <Routes>
             <Route path="/" element={<CatalogPage />} />
             <Route
