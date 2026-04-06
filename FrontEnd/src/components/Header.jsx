@@ -17,6 +17,7 @@ function Header({
     if (onLogoClick) {
       onLogoClick();
     } else {
+      window.scrollTo(0, 0);
       navigate("/");
     }
   };
